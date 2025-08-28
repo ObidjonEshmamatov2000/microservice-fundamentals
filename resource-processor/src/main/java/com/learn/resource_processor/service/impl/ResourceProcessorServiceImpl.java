@@ -2,16 +2,36 @@ package com.learn.resource_processor.service.impl;
 
 import com.learn.resource_processor.dto.SongDTO;
 import com.learn.resource_processor.service.ResourceProcessorService;
+import com.learn.resource_processor.client.ResourceServiceClient;
+import com.learn.resource_processor.client.SongServiceClient;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.mp3.Mp3Parser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 
+@Service
 public class ResourceProcessorServiceImpl implements ResourceProcessorService {
+    private final ResourceServiceClient resourceServiceClient;
+    private final SongServiceClient songServiceClient;
+
+    public ResourceProcessorServiceImpl(ResourceServiceClient resourceServiceClient, SongServiceClient songServiceClient) {
+        this.resourceServiceClient = resourceServiceClient;
+        this.songServiceClient = songServiceClient;
+    }
+
     @Override
-    public SongDTO processMp3Resource(byte[] mp3Data) {
+    public void process(String resourceId) {
+        byte[] resourceData = resourceServiceClient.getResourceData(resourceId);
+        Long resourceLongId = Long.parseLong(resourceId);
+        SongDTO songDTO = processMp3Resource(resourceData, resourceLongId);
+        songServiceClient.saveSongMetadata(songDTO);
+        System.out.println("Processed resource ID: " + resourceId);
+    }
+
+    private SongDTO processMp3Resource(byte[] mp3Data, Long resourceId) {
         Metadata metadata = new Metadata();
         try (ByteArrayInputStream bais = new ByteArrayInputStream(mp3Data)) {
             Mp3Parser parser = new Mp3Parser();
@@ -31,7 +51,7 @@ public class ResourceProcessorServiceImpl implements ResourceProcessorService {
         String formattedDuration = convertDuration(durationStr);
 
         SongDTO songDTO = new SongDTO();
-        songDTO.setId(null); // ID will be set later
+        songDTO.setId(resourceId);
         songDTO.setName(title);
         songDTO.setArtist(artist);
         songDTO.setAlbum(album);
