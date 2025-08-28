@@ -32,15 +32,7 @@ public class ResourceProcessorServiceImpl implements ResourceProcessorService {
     }
 
     private SongDTO processMp3Resource(byte[] mp3Data, Long resourceId) {
-        Metadata metadata = new Metadata();
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(mp3Data)) {
-            Mp3Parser parser = new Mp3Parser();
-            BodyContentHandler handler = new BodyContentHandler();
-            ParseContext context = new ParseContext();
-            parser.parse(bais, handler, metadata, context);
-        } catch (Exception e) {
-            throw new RuntimeException("Error parsing MP3 metadata", e);
-        }
+        Metadata metadata = getMetadata(mp3Data);
 
         String title = getOrDefault(metadata, "title", "Unknown Title");
         String artist = getOrDefault(metadata, "xmpDM:artist", "Unknown Artist");
@@ -59,6 +51,19 @@ public class ResourceProcessorServiceImpl implements ResourceProcessorService {
         songDTO.setYear(releaseDate.length() >= 4 ? releaseDate.substring(0, 4) : "1900");
 
         return songDTO;
+    }
+
+    private static Metadata getMetadata(byte[] mp3Data) {
+        Metadata metadata = new Metadata();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(mp3Data)) {
+            Mp3Parser parser = new Mp3Parser();
+            BodyContentHandler handler = new BodyContentHandler();
+            ParseContext context = new ParseContext();
+            parser.parse(bais, handler, metadata, context);
+        } catch (Exception e) {
+            throw new RuntimeException("Error parsing MP3 metadata", e);
+        }
+        return metadata;
     }
 
     private String getOrDefault(Metadata metadata, String key, String defaultValue) {

@@ -2,6 +2,8 @@ package com.learn.resource_processor.client;
 
 import com.learn.resource_processor.dto.SongDTO;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -17,6 +19,7 @@ public class SongServiceClient {
         this.songServiceUrl = "http://" + url + ":" + port + "/songs";
     }
 
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public void saveSongMetadata(SongDTO songDTO) {
         restTemplate.postForObject(songServiceUrl, songDTO, SongDTO.class);
     }

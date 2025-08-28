@@ -2,6 +2,8 @@ package com.learn.resource_service.kafka;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,6 +17,7 @@ public class ResourceProducer {
         this.resourceCreatedTopic = topic;
     }
 
+    @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public void sendId(String id) {
         try {
             // wait for ack from Kafka
