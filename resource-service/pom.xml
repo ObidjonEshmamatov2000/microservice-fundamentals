@@ -47,7 +47,13 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
-
+        <!-- AspectJ for Spring AOP and Retry -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>1.9.22</version>
+            <scope>runtime</scope>
+        </dependency>
         <dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
