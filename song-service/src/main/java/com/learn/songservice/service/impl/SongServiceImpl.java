@@ -1,9 +1,10 @@
-package com.learn.songservice.service;
+package com.learn.songservice.service.impl;
 
 import com.learn.songservice.dto.SongDTO;
 import com.learn.songservice.entity.Song;
 import com.learn.songservice.exception.ConflictException;
 import com.learn.songservice.repository.SongRepository;
+import com.learn.songservice.service.SongService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -11,7 +12,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 @Service
-public class SongServiceImpl implements SongService{
+public class SongServiceImpl implements SongService {
 
     private final SongRepository songRepository;
 
