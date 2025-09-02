@@ -1,9 +1,10 @@
-package com.learn.resource_service.service.impl;
+package com.learn.resource_service.unit.service.impl;
 
 import com.learn.resource_service.entity.Resource;
 import com.learn.resource_service.repository.ResourceRepository;
 import com.learn.resource_service.kafka.ResourceProducer;
 import com.learn.resource_service.client.S3Service;
+import com.learn.resource_service.service.impl.ResourceServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;

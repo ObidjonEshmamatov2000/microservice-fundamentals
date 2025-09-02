@@ -1,8 +1,9 @@
-package com.learn.resource_processor.service.impl;
+package com.learn.resource_processor.unit.service.impl;
 
 import com.learn.resource_processor.client.ResourceServiceClient;
 import com.learn.resource_processor.client.SongServiceClient;
 import com.learn.resource_processor.dto.SongDTO;
+import com.learn.resource_processor.service.impl.ResourceProcessorServiceImpl;
 import org.apache.tika.exception.TikaException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

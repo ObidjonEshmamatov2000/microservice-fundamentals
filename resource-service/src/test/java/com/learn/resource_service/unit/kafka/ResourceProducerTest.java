@@ -1,5 +1,6 @@
-package com.learn.resource_service.kafka;
+package com.learn.resource_service.unit.kafka;
 
+import com.learn.resource_service.kafka.ResourceProducer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

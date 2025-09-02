@@ -1,5 +1,6 @@
-package com.learn.resource_processor.kafka;
+package com.learn.resource_processor.unit.kafka;
 
+import com.learn.resource_processor.kafka.ResourceConsumer;
 import com.learn.resource_processor.service.ResourceProcessorService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

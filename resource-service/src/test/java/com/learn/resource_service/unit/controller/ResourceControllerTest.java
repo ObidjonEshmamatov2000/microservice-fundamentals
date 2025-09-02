@@ -1,5 +1,6 @@
-package com.learn.resource_service.controller;
+package com.learn.resource_service.unit.controller;
 
+import com.learn.resource_service.controller.ResourceController;
 import com.learn.resource_service.entity.Resource;
 import com.learn.resource_service.service.ResourceService;
 import org.junit.jupiter.api.BeforeEach;

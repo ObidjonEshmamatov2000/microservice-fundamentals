@@ -1,5 +1,6 @@
-package com.learn.songservice.controller;
+package com.learn.songservice.unit.controller;
 
+import com.learn.songservice.controller.SongController;
 import com.learn.songservice.dto.SongDTO;
 import com.learn.songservice.entity.Song;
 import com.learn.songservice.service.SongService;

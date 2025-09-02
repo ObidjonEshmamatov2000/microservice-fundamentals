@@ -1,9 +1,10 @@
-package com.learn.songservice.service.impl;
+package com.learn.songservice.unit.service.impl;
 
 import com.learn.songservice.dto.SongDTO;
 import com.learn.songservice.entity.Song;
 import com.learn.songservice.exception.ConflictException;
 import com.learn.songservice.repository.SongRepository;
+import com.learn.songservice.service.impl.SongServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
