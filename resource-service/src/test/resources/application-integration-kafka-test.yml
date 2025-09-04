@@ -1,0 +1,29 @@
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.LongSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.LongDeserializer
+
+kafka:
+  topic:
+    resource-created: resource-created-test
+
+# Disable unnecessary components for integration tests
+management:
+  endpoints:
+    enabled-by-default: false
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: DEBUG

@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: resource-service-test
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+  # Kafka configuration (will be mocked)
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.LongSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.LongDeserializer
+
+# Mock AWS credentials for testing
+AWS_ACCESS_KEY: test-access-key
+AWS_SECRET_KEY: test-secret-key
+AWS_BUCKET_NAME: test-bucket
+AWS_REGION: us-east-1
+
+# Kafka topic (will be mocked)
+kafka:
+  topic:
+    resource-created: resource-created-test
+
+# Disable unnecessary components for integration tests
+management:
+  endpoints:
+    enabled-by-default: false
+
+logging:
+  level:
+    org.apache.kafka: WARN
+    org.springframework.kafka: DEBUG
+    com.learn.resource_service: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

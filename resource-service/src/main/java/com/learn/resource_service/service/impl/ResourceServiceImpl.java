@@ -1,10 +1,11 @@
 package com.learn.resource_service.service.impl;
 
+import com.learn.resource_service.client.SongServiceClient;
 import com.learn.resource_service.entity.Resource;
 import com.learn.resource_service.repository.ResourceRepository;
-import com.learn.resource_service.service.KafkaProducer;
+import com.learn.resource_service.kafka.ResourceProducer;
 import com.learn.resource_service.service.ResourceService;
-import com.learn.resource_service.service.S3Service;
+import com.learn.resource_service.client.S3Service;
 import jakarta.transaction.Transactional;
 import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
@@ -21,12 +22,14 @@ public class ResourceServiceImpl implements ResourceService {
 
     private final ResourceRepository resourceRepository;
     private final S3Service s3Service;
-    private final KafkaProducer kafkaProducer;
+    private final SongServiceClient songServiceClient;
+    private final ResourceProducer resourceProducer;
 
-    public ResourceServiceImpl(ResourceRepository resourceRepository, S3Service s3Service, KafkaProducer kafkaProducer) {
+    public ResourceServiceImpl(ResourceRepository resourceRepository, S3Service s3Service, SongServiceClient songServiceClient, ResourceProducer resourceProducer) {
         this.resourceRepository = resourceRepository;
         this.s3Service = s3Service;
-        this.kafkaProducer = kafkaProducer;
+        this.songServiceClient = songServiceClient;
+        this.resourceProducer = resourceProducer;
     }
 
     @Override
@@ -53,7 +56,7 @@ public class ResourceServiceImpl implements ResourceService {
             if (!s3Service.fileExists(fileName)) {
                 throw new RuntimeException("S3 file verification failed after database save");
             }
-            kafkaProducer.sendId(resource.getId().toString());
+            resourceProducer.sendId(resource.getId());
             return resource.getId();
         } catch (Exception e) {
             performCleanupOnFailure(fileName, resource);
@@ -135,7 +138,7 @@ public class ResourceServiceImpl implements ResourceService {
                     }
 
                     resourceRepository.delete(resource);
-
+                    songServiceClient.deleteSongById(resource.getId());
                     deletedIds.add(id);
                 } catch (Exception ex) {
                     System.err.println("Failed to delete resource " + id + " : " + ex.getMessage());

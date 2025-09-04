@@ -2,25 +2,36 @@ package com.learn.resource_processor.service.impl;
 
 import com.learn.resource_processor.dto.SongDTO;
 import com.learn.resource_processor.service.ResourceProcessorService;
+import com.learn.resource_processor.client.ResourceServiceClient;
+import com.learn.resource_processor.client.SongServiceClient;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.ParseContext;
 import org.apache.tika.parser.mp3.Mp3Parser;
 import org.apache.tika.sax.BodyContentHandler;
+import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 
+@Service
 public class ResourceProcessorServiceImpl implements ResourceProcessorService {
+    private final ResourceServiceClient resourceServiceClient;
+    private final SongServiceClient songServiceClient;
+
+    public ResourceProcessorServiceImpl(ResourceServiceClient resourceServiceClient, SongServiceClient songServiceClient) {
+        this.resourceServiceClient = resourceServiceClient;
+        this.songServiceClient = songServiceClient;
+    }
+
     @Override
-    public SongDTO processMp3Resource(byte[] mp3Data) {
-        Metadata metadata = new Metadata();
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(mp3Data)) {
-            Mp3Parser parser = new Mp3Parser();
-            BodyContentHandler handler = new BodyContentHandler();
-            ParseContext context = new ParseContext();
-            parser.parse(bais, handler, metadata, context);
-        } catch (Exception e) {
-            throw new RuntimeException("Error parsing MP3 metadata", e);
-        }
+    public void process(Long resourceId) {
+        byte[] resourceData = resourceServiceClient.getResourceData(resourceId);
+        SongDTO songDTO = processMp3Resource(resourceData, resourceId);
+        songServiceClient.saveSongMetadata(songDTO);
+        System.out.println("Processed resource ID: " + resourceId);
+    }
+
+    private SongDTO processMp3Resource(byte[] mp3Data, Long resourceId) {
+        Metadata metadata = getMetadata(mp3Data);
 
         String title = getOrDefault(metadata, "title", "Unknown Title");
         String artist = getOrDefault(metadata, "xmpDM:artist", "Unknown Artist");
@@ -31,7 +42,7 @@ public class ResourceProcessorServiceImpl implements ResourceProcessorService {
         String formattedDuration = convertDuration(durationStr);
 
         SongDTO songDTO = new SongDTO();
-        songDTO.setId(null); // ID will be set later
+        songDTO.setId(resourceId);
         songDTO.setName(title);
         songDTO.setArtist(artist);
         songDTO.setAlbum(album);
@@ -39,6 +50,19 @@ public class ResourceProcessorServiceImpl implements ResourceProcessorService {
         songDTO.setYear(releaseDate.length() >= 4 ? releaseDate.substring(0, 4) : "1900");
 
         return songDTO;
+    }
+
+    private static Metadata getMetadata(byte[] mp3Data) {
+        Metadata metadata = new Metadata();
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(mp3Data)) {
+            Mp3Parser parser = new Mp3Parser();
+            BodyContentHandler handler = new BodyContentHandler();
+            ParseContext context = new ParseContext();
+            parser.parse(bais, handler, metadata, context);
+        } catch (Exception e) {
+            throw new RuntimeException("Error parsing MP3 metadata", e);
+        }
+        return metadata;
     }
 
     private String getOrDefault(Metadata metadata, String key, String defaultValue) {
