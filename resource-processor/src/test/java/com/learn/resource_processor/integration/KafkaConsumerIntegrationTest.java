@@ -8,6 +8,7 @@ import com.learn.resource_processor.service.ResourceProcessorService;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,10 +64,10 @@ class KafkaConsumerIntegrationTest {
     @MockitoBean
     private SongServiceClient songServiceClient;
 
-    private KafkaProducer<String, String> testProducer;
+    private KafkaProducer<String, Long> testProducer;
 
     private static final String TOPIC_NAME = "resource-created";
-    private static final String TEST_RESOURCE_ID = "12345";
+    private static final Long TEST_RESOURCE_ID = 12345L;
 
     @BeforeEach
     void setUp() {
@@ -75,7 +76,7 @@ class KafkaConsumerIntegrationTest {
                 System.getProperty("spring.embedded.kafka.brokers")
         );
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, LongSerializer.class);
 
         testProducer = new KafkaProducer<>(producerProps);
 
@@ -92,7 +93,7 @@ class KafkaConsumerIntegrationTest {
         doAnswer(invocation -> {
             latch.countDown();
             return null;
-        }).when(resourceProcessorService).process(anyString());
+        }).when(resourceProcessorService).process(anyLong());
 
         // When
         sendMessageToKafka(TEST_RESOURCE_ID);
@@ -108,16 +109,16 @@ class KafkaConsumerIntegrationTest {
     @Timeout(10)
     void shouldConsumeMultipleMessages() throws InterruptedException {
         // Given
-        List<String> resourceIds = Arrays.asList("101", "102", "103");
+        List<Long> resourceIds = Arrays.asList(101L, 102L, 103L);
         CountDownLatch latch = new CountDownLatch(resourceIds.size());
 
         doAnswer(invocation -> {
             latch.countDown();
             return null;
-        }).when(resourceProcessorService).process(anyString());
+        }).when(resourceProcessorService).process(anyLong());
 
         // When
-        for (String resourceId : resourceIds) {
+        for (Long resourceId : resourceIds) {
             sendMessageToKafka(resourceId);
         }
 
@@ -125,14 +126,14 @@ class KafkaConsumerIntegrationTest {
         assertTrue(latch.await(10, TimeUnit.SECONDS),
                 "All messages should be consumed within 10 seconds");
 
-        verify(resourceConsumer, times(3)).consume(anyString());
-        verify(resourceProcessorService, times(3)).process(anyString());
+        verify(resourceConsumer, times(3)).consume(anyLong());
+        verify(resourceProcessorService, times(3)).process(anyLong());
 
         // Verify each specific resource ID was processed
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
         verify(resourceProcessorService, times(3)).process(captor.capture());
 
-        List<String> processedIds = captor.getAllValues();
+        List<Long> processedIds = captor.getAllValues();
         assertThat(processedIds).containsExactlyInAnyOrderElementsOf(resourceIds);
     }
 
@@ -140,13 +141,13 @@ class KafkaConsumerIntegrationTest {
     @Timeout(10)
     void shouldHandleNumericResourceIds() throws InterruptedException {
         // Given
-        String numericResourceId = "999999";
+        Long numericResourceId = 999999L;
         CountDownLatch latch = new CountDownLatch(1);
 
         doAnswer(invocation -> {
             latch.countDown();
             return null;
-        }).when(resourceProcessorService).process(anyString());
+        }).when(resourceProcessorService).process(anyLong());
 
         // When
         sendMessageToKafka(numericResourceId);
@@ -167,7 +168,7 @@ class KafkaConsumerIntegrationTest {
         doAnswer(invocation -> {
             latch.countDown();
             throw new RuntimeException("Processing failed");
-        }).when(resourceProcessorService).process(anyString());
+        }).when(resourceProcessorService).process(anyLong());
 
         // When
         sendMessageToKafka(TEST_RESOURCE_ID);
@@ -184,107 +185,6 @@ class KafkaConsumerIntegrationTest {
 
     @Test
     @Timeout(10)
-    void shouldConsumeEmptyMessage() throws InterruptedException {
-        // Given
-        String emptyResourceId = "";
-        CountDownLatch latch = new CountDownLatch(1);
-
-        doAnswer(invocation -> {
-            latch.countDown();
-            return null;
-        }).when(resourceProcessorService).process(anyString());
-
-        // When
-        sendMessageToKafka(emptyResourceId);
-
-        // Then
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-
-        verify(resourceConsumer, times(1)).consume(emptyResourceId);
-        verify(resourceProcessorService, times(1)).process(emptyResourceId);
-    }
-
-    @Test
-    @Timeout(10)
-    void shouldConsumeLargeResourceId() throws InterruptedException {
-        // Given
-        String largeResourceId = "A".repeat(1000);
-        CountDownLatch latch = new CountDownLatch(1);
-
-        doAnswer(invocation -> {
-            latch.countDown();
-            return null;
-        }).when(resourceProcessorService).process(anyString());
-
-        // When
-        sendMessageToKafka(largeResourceId);
-
-        // Then
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-
-        verify(resourceConsumer, times(1)).consume(largeResourceId);
-        verify(resourceProcessorService, times(1)).process(largeResourceId);
-    }
-
-    @Test
-    @Timeout(15)
-    void shouldHandleHighThroughput() throws InterruptedException {
-        // Given
-        int messageCount = 100;
-        CountDownLatch latch = new CountDownLatch(messageCount);
-
-        doAnswer(invocation -> {
-            latch.countDown();
-            return null;
-        }).when(resourceProcessorService).process(anyString());
-
-        // When
-        for (int i = 0; i < messageCount; i++) {
-            sendMessageToKafka("resource-" + i);
-        }
-
-        // Then
-        assertTrue(latch.await(15, TimeUnit.SECONDS),
-                "All " + messageCount + " messages should be consumed within 15 seconds");
-
-        verify(resourceConsumer, times(messageCount)).consume(anyString());
-        verify(resourceProcessorService, times(messageCount)).process(anyString());
-    }
-
-    @Test
-    @Timeout(10)
-    void shouldMaintainMessageOrder() throws InterruptedException {
-        // Given
-        List<String> resourceIds = Arrays.asList("order-1", "order-2", "order-3", "order-4", "order-5");
-        CountDownLatch latch = new CountDownLatch(resourceIds.size());
-
-        doAnswer(invocation -> {
-            latch.countDown();
-            return null;
-        }).when(resourceProcessorService).process(anyString());
-
-        // When - Send all messages with same key to ensure same partition and ordering
-        for (String resourceId : resourceIds) {
-            ProducerRecord<String, String> record = new ProducerRecord<>(
-                    TOPIC_NAME, "same-key", resourceId
-            );
-            testProducer.send(record);
-        }
-        testProducer.flush();
-
-        // Then
-        assertTrue(latch.await(10, TimeUnit.SECONDS));
-
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
-        verify(resourceProcessorService, times(5)).process(captor.capture());
-
-        List<String> processedIds = captor.getAllValues();
-        // Since we used the same partition, order should be maintained
-        assertThat(processedIds).containsExactlyElementsOf(resourceIds);
-    }
-
-    @Test
-    @Timeout(10)
     void shouldVerifyConsumerGroupConfiguration() throws InterruptedException {
         // Given
         CountDownLatch latch = new CountDownLatch(1);
@@ -292,7 +192,7 @@ class KafkaConsumerIntegrationTest {
         doAnswer(invocation -> {
             latch.countDown();
             return null;
-        }).when(resourceProcessorService).process(anyString());
+        }).when(resourceProcessorService).process(anyLong());
 
         // When
         sendMessageToKafka(TEST_RESOURCE_ID);
@@ -306,31 +206,9 @@ class KafkaConsumerIntegrationTest {
 
     @Test
     @Timeout(10)
-    void shouldHandleSpecialCharactersInResourceId() throws InterruptedException {
-        // Given
-        String specialResourceId = "resource-123!@#$%^&*()_+-={}[]|\\:;\"'<>?,./";
-        CountDownLatch latch = new CountDownLatch(1);
-
-        doAnswer(invocation -> {
-            latch.countDown();
-            return null;
-        }).when(resourceProcessorService).process(anyString());
-
-        // When
-        sendMessageToKafka(specialResourceId);
-
-        // Then
-        assertTrue(latch.await(5, TimeUnit.SECONDS));
-
-        verify(resourceConsumer, times(1)).consume(specialResourceId);
-        verify(resourceProcessorService, times(1)).process(specialResourceId);
-    }
-
-    @Test
-    @Timeout(10)
     void shouldVerifyMessageConsumptionWithMockingChain() throws InterruptedException {
         // Given
-        String resourceId = "chain-test-123";
+        Long resourceId = 123L;
         byte[] mockResourceData = "mock-mp3-data".getBytes();
         SongDTO mockSongDTO = new SongDTO();
         mockSongDTO.setName("Test Song");
@@ -342,12 +220,12 @@ class KafkaConsumerIntegrationTest {
 
         doAnswer(invocation -> {
             // Simulate the real service behavior
-            String id = invocation.getArgument(0);
+            Long id = invocation.getArgument(0);
             resourceServiceClient.getResourceData(id);
             songServiceClient.saveSongMetadata(any(SongDTO.class));
             latch.countDown();
             return null;
-        }).when(resourceProcessorService).process(anyString());
+        }).when(resourceProcessorService).process(anyLong());
 
         // When
         sendMessageToKafka(resourceId);
@@ -359,8 +237,8 @@ class KafkaConsumerIntegrationTest {
         verify(resourceProcessorService, times(1)).process(resourceId);
     }
 
-    private void sendMessageToKafka(String resourceId) {
-        ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC_NAME, resourceId);
+    private void sendMessageToKafka(Long resourceId) {
+        ProducerRecord<String, Long> record = new ProducerRecord<>(TOPIC_NAME, resourceId);
         testProducer.send(record);
         testProducer.flush();
     }

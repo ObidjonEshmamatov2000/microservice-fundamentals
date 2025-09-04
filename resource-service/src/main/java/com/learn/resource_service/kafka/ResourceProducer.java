@@ -8,17 +8,17 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class ResourceProducer {
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, Long> kafkaTemplate;
     private final String resourceCreatedTopic;
 
-    public ResourceProducer(KafkaTemplate<String, String> kafkaTemplate,
+    public ResourceProducer(KafkaTemplate<String, Long> kafkaTemplate,
                             @Value("${kafka.topic.resource-created}") String topic) {
         this.kafkaTemplate = kafkaTemplate;
         this.resourceCreatedTopic = topic;
     }
 
     @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 1000))
-    public void sendId(String id) {
+    public void sendId(Long id) {
         try {
             // wait for ack from Kafka
             var result = kafkaTemplate.send(resourceCreatedTopic, id).get();

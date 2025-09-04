@@ -1,5 +1,6 @@
 package com.learn.resource_service.service.impl;
 
+import com.learn.resource_service.client.SongServiceClient;
 import com.learn.resource_service.entity.Resource;
 import com.learn.resource_service.repository.ResourceRepository;
 import com.learn.resource_service.kafka.ResourceProducer;
@@ -21,11 +22,13 @@ public class ResourceServiceImpl implements ResourceService {
 
     private final ResourceRepository resourceRepository;
     private final S3Service s3Service;
+    private final SongServiceClient songServiceClient;
     private final ResourceProducer resourceProducer;
 
-    public ResourceServiceImpl(ResourceRepository resourceRepository, S3Service s3Service, ResourceProducer resourceProducer) {
+    public ResourceServiceImpl(ResourceRepository resourceRepository, S3Service s3Service, SongServiceClient songServiceClient, ResourceProducer resourceProducer) {
         this.resourceRepository = resourceRepository;
         this.s3Service = s3Service;
+        this.songServiceClient = songServiceClient;
         this.resourceProducer = resourceProducer;
     }
 
@@ -53,7 +56,7 @@ public class ResourceServiceImpl implements ResourceService {
             if (!s3Service.fileExists(fileName)) {
                 throw new RuntimeException("S3 file verification failed after database save");
             }
-            resourceProducer.sendId(resource.getId().toString());
+            resourceProducer.sendId(resource.getId());
             return resource.getId();
         } catch (Exception e) {
             performCleanupOnFailure(fileName, resource);
@@ -135,7 +138,7 @@ public class ResourceServiceImpl implements ResourceService {
                     }
 
                     resourceRepository.delete(resource);
-
+                    songServiceClient.deleteSongById(resource.getId());
                     deletedIds.add(id);
                 } catch (Exception ex) {
                     System.err.println("Failed to delete resource " + id + " : " + ex.getMessage());

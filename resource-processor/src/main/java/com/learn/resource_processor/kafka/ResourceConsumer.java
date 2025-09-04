@@ -14,7 +14,7 @@ public class ResourceConsumer {
     }
 
     @KafkaListener(topics = "resource-created", groupId = "resource-processor-group")
-    public void consume(String resourceId) {
+    public void consume(Long resourceId) {
         System.out.println("Received: " + resourceId);
         resourceProcessorService.process(resourceId);
     }

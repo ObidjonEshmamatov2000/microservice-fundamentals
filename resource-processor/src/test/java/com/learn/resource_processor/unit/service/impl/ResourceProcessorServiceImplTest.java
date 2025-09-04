@@ -37,7 +37,7 @@ class ResourceProcessorServiceImplTest {
     @Test
     void process_withValidResourceId_callsClients() throws IOException, TikaException, SAXException {
         // Arrange
-        String resourceId = "1";
+        Long resourceId = 1L;
         byte[] mockData = new byte[]{1, 2, 3};
         when(resourceServiceClient.getResourceData(resourceId)).thenReturn(mockData);
 

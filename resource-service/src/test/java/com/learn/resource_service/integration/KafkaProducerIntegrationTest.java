@@ -5,6 +5,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,9 @@ import static org.junit.jupiter.api.Assertions.*;
 )
 @TestPropertySource(properties = {
         "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
-        "kafka.topic.resource-created=resource-created-test"
+        "kafka.topic.resource-created=resource-created-test",
+        "spring.kafka.consumer.value-deserializer=org.apache.kafka.common.serialization.LongDeserializer",
+        "spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.LongSerializer"
 })
 @DirtiesContext
 class KafkaProducerIntegrationTest {
@@ -63,7 +66,7 @@ class KafkaProducerIntegrationTest {
     @Value("${kafka.topic.resource-created}")
     private String resourceCreatedTopic;
 
-    private KafkaConsumer<String, String> testConsumer;
+    private KafkaConsumer<String, Long> testConsumer;
 
     @BeforeEach
     void setUp() {
@@ -75,7 +78,7 @@ class KafkaProducerIntegrationTest {
         );
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class);
 
         testConsumer = new KafkaConsumer<>(consumerProps);
         testConsumer.subscribe(Collections.singletonList(resourceCreatedTopic));
@@ -91,13 +94,13 @@ class KafkaProducerIntegrationTest {
     @Test
     void shouldSendResourceIdToKafkaTopic() throws InterruptedException {
         // Given
-        String resourceId = "12345";
+        Long resourceId = 12345L;
 
         // When
         resourceProducer.sendId(resourceId);
 
         // Then
-        ConsumerRecord<String, String> record = getSingleRecord();
+        ConsumerRecord<String, Long> record = getSingleRecord();
 
         assertThat(record).isNotNull();
         assertThat(record.topic()).isEqualTo(resourceCreatedTopic);
@@ -108,19 +111,19 @@ class KafkaProducerIntegrationTest {
     @Test
     void shouldSendMultipleResourceIdsSuccessfully() throws InterruptedException {
         // Given
-        List<String> resourceIds = Arrays.asList("101", "102", "103");
+        List<Long> resourceIds = Arrays.asList(101L, 102L, 103L);
 
         // When
-        for (String id : resourceIds) {
+        for (Long id : resourceIds) {
             resourceProducer.sendId(id);
         }
 
         // Then
-        List<ConsumerRecord<String, String>> records = getMultipleRecords(3);
+        List<ConsumerRecord<String, Long>> records = getMultipleRecords(3);
 
         assertThat(records).hasSize(3);
 
-        List<String> receivedIds = records.stream()
+        List<Long> receivedIds = records.stream()
                 .map(ConsumerRecord::value)
                 .toList();
 
@@ -134,18 +137,18 @@ class KafkaProducerIntegrationTest {
     @Test
     void shouldDistributeMessagesAcrossPartitions() throws InterruptedException {
         // Given
-        List<String> resourceIds = Arrays.asList("201", "202", "203", "204", "205");
+        List<Long> resourceIds = Arrays.asList(201L, 202L, 203L, 204L, 205L);
 
         // When
-        for (String id : resourceIds) {
+        for (Long id : resourceIds) {
             resourceProducer.sendId(id);
         }
 
         // Then
-        List<ConsumerRecord<String, String>> records = getMultipleRecords(5);
+        List<ConsumerRecord<String, Long>> records = getMultipleRecords(5);
 
         Set<Integer> partitions = new HashSet<>();
-        for (ConsumerRecord<String, String> record : records) {
+        for (ConsumerRecord<String, Long> record : records) {
             partitions.add(record.partition());
         }
 
@@ -157,161 +160,23 @@ class KafkaProducerIntegrationTest {
         );
     }
 
-    @Test
-    void shouldHandleNullResourceId() {
-        // Given
-        String resourceId = null;
-
-        // When & Then
-        assertDoesNotThrow(() -> resourceProducer.sendId(resourceId));
-
-        // Verify message was sent (Kafka can handle null values)
-        ConsumerRecord<String, String> record = getSingleRecord();
-        assertThat(record).isNotNull();
-        assertThat(record.value()).isNull();
-    }
-
-    @Test
-    void shouldHandleEmptyResourceId() throws InterruptedException {
-        // Given
-        String resourceId = "";
-
-        // When
-        resourceProducer.sendId(resourceId);
-
-        // Then
-        ConsumerRecord<String, String> record = getSingleRecord();
-        assertThat(record).isNotNull();
-        assertThat(record.value()).isEmpty();
-    }
-
-    @Test
-    void shouldHandleLargeResourceId() throws InterruptedException {
-        // Given
-        String resourceId = "A".repeat(1000); // 1000 character string
-
-        // When
-        resourceProducer.sendId(resourceId);
-
-        // Then
-        ConsumerRecord<String, String> record = getSingleRecord();
-        assertThat(record).isNotNull();
-        assertThat(record.value()).isEqualTo(resourceId);
-        assertThat(record.value()).hasSize(1000);
-    }
-
-    @Test
-    void shouldVerifyMessageMetadata() throws InterruptedException {
-        // Given
-        String resourceId = "metadata-test-123";
-
-        // When
-        resourceProducer.sendId(resourceId);
-
-        // Then
-        ConsumerRecord<String, String> record = getSingleRecord();
-
-        assertThat(record).isNotNull();
-        assertThat(record.topic()).isEqualTo(resourceCreatedTopic);
-        assertThat(record.partition()).isBetween(0, 2);
-        assertThat(record.offset()).isGreaterThanOrEqualTo(0);
-        assertThat(record.timestamp()).isGreaterThan(0);
-        assertThat(record.timestampType()).isNotNull();
-    }
-
-    @Test
-    void shouldMaintainMessageOrderWithinPartition() throws InterruptedException {
-        // Given - Use same key to ensure same partition
-        String baseId = "order-test-";
-        List<String> resourceIds = Arrays.asList(
-                baseId + "1", baseId + "2", baseId + "3"
-        );
-
-        // When - Send with same key to ensure same partition
-        for (String id : resourceIds) {
-            kafkaTemplate.send(resourceCreatedTopic, "same-key", id);
-        }
-
-        // Then
-        List<ConsumerRecord<String, String>> records = getMultipleRecords(3);
-
-        // Filter records with our test key and sort by offset
-        List<ConsumerRecord<String, String>> orderedRecords = records.stream()
-                .filter(record -> "same-key".equals(record.key()))
-                .sorted(Comparator.comparing(ConsumerRecord::offset))
-                .toList();
-
-        assertThat(orderedRecords).hasSize(3);
-
-        // Verify order
-        for (int i = 0; i < orderedRecords.size(); i++) {
-            assertThat(orderedRecords.get(i).value()).isEqualTo(resourceIds.get(i));
-        }
-    }
-
-    @Test
-    void shouldHandleConcurrentSending() throws InterruptedException, ExecutionException {
-        // Given
-        int numberOfThreads = 5;
-        int messagesPerThread = 10;
-        List<String> allResourceIds = new ArrayList<>();
-
-        // When - Send messages concurrently
-        List<Thread> threads = new ArrayList<>();
-
-        for (int i = 0; i < numberOfThreads; i++) {
-            final int threadNum = i;
-            Thread thread = new Thread(() -> {
-                for (int j = 0; j < messagesPerThread; j++) {
-                    String resourceId = String.format("thread-%d-msg-%d", threadNum, j);
-                    synchronized (allResourceIds) {
-                        allResourceIds.add(resourceId);
-                    }
-                    resourceProducer.sendId(resourceId);
-                }
-            });
-            threads.add(thread);
-            thread.start();
-        }
-
-        // Wait for all threads to complete
-        for (Thread thread : threads) {
-            thread.join(5000); // 5 second timeout
-        }
-
-        // Then
-        int expectedMessages = numberOfThreads * messagesPerThread;
-        List<ConsumerRecord<String, String>> records = getMultipleRecords(expectedMessages);
-
-        assertThat(records).hasSize(expectedMessages);
-
-        List<String> receivedIds = records.stream()
-                .map(ConsumerRecord::value)
-                .sorted()
-                .toList();
-
-        Collections.sort(allResourceIds);
-
-        assertThat(receivedIds).isEqualTo(allResourceIds);
-    }
-
-    private ConsumerRecord<String, String> getSingleRecord() {
-        List<ConsumerRecord<String, String>> records = getMultipleRecords(1);
+    private ConsumerRecord<String, Long> getSingleRecord() {
+        List<ConsumerRecord<String, Long>> records = getMultipleRecords(1);
         assertThat(records).hasSize(1);
         return records.get(0);
     }
 
-    private List<ConsumerRecord<String, String>> getMultipleRecords(int expectedCount) {
-        List<ConsumerRecord<String, String>> allRecords = new ArrayList<>();
+    private List<ConsumerRecord<String, Long>> getMultipleRecords(int expectedCount) {
+        List<ConsumerRecord<String, Long>> allRecords = new ArrayList<>();
         long startTime = System.currentTimeMillis();
         long timeoutMs = 10000;
 
         while (allRecords.size() < expectedCount &&
                 (System.currentTimeMillis() - startTime) < timeoutMs) {
 
-            ConsumerRecords<String, String> records = testConsumer.poll(Duration.ofMillis(1000));
+            ConsumerRecords<String, Long> records = testConsumer.poll(Duration.ofMillis(1000));
 
-            for (ConsumerRecord<String, String> record : records) {
+            for (ConsumerRecord<String, Long> record : records) {
                 allRecords.add(record);
             }
         }

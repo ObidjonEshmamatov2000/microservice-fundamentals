@@ -19,7 +19,7 @@ public class ResourceServiceClient {
     }
 
     @Retryable(maxAttempts = 3, backoff = @Backoff(delay = 2000))
-    public byte[] getResourceData(String resourceId) {
+    public byte[] getResourceData(Long resourceId) {
         String url = resourceServiceUrl + "/" + resourceId;
         return restTemplate.getForObject(url, byte[].class);
     }

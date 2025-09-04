@@ -21,7 +21,7 @@ class ResourceConsumerTest {
     @Test
     void consume_withValidResourceId_callsProcess() {
         // Arrange
-        String resourceId = "123";
+        Long resourceId = 123L;
 
         // Act
         resourceConsumer.consume(resourceId);

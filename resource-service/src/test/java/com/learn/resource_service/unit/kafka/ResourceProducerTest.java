@@ -16,10 +16,10 @@ import static org.mockito.Mockito.*;
 class ResourceProducerTest {
 
     @Mock
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private KafkaTemplate<String, Long> kafkaTemplate;
 
     @Mock
-    private SendResult<String, String> sendResult;
+    private SendResult<String, Long> sendResult;
 
     private ResourceProducer resourceProducer;
     private final String topic = "resource-created-topic";
@@ -33,8 +33,8 @@ class ResourceProducerTest {
     @Test
     void sendId_success() throws Exception {
         // Arrange
-        String id = "123";
-        CompletableFuture<SendResult<String, String>> future = CompletableFuture.completedFuture(sendResult);
+        Long id = 123L;
+        CompletableFuture<SendResult<String, Long>> future = CompletableFuture.completedFuture(sendResult);
         when(kafkaTemplate.send(eq(topic), eq(id))).thenReturn(future);
         when(sendResult.getRecordMetadata()).thenReturn(mock(org.apache.kafka.clients.producer.RecordMetadata.class));
 
@@ -48,8 +48,8 @@ class ResourceProducerTest {
     @Test
     void sendId_handlesException() throws Exception {
         // Arrange
-        String id = "123";
-        CompletableFuture<SendResult<String, String>> future = new CompletableFuture<>();
+        Long id = 123L;
+        CompletableFuture<SendResult<String, Long>> future = new CompletableFuture<>();
         future.completeExceptionally(new RuntimeException("Kafka unavailable"));
         when(kafkaTemplate.send(eq(topic), eq(id))).thenReturn(future);
 
@@ -63,7 +63,7 @@ class ResourceProducerTest {
     @Test
     void sendId_retriesOnFailure() throws Exception {
         // Arrange
-        String id = "123";
+        Long id = 123L;
         when(kafkaTemplate.send(eq(topic), eq(id)))
                 .thenThrow(new RuntimeException("First attempt failed"))
                 .thenReturn(CompletableFuture.completedFuture(sendResult));

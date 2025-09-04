@@ -1,5 +1,6 @@
 package com.learn.resource_service.unit.service.impl;
 
+import com.learn.resource_service.client.SongServiceClient;
 import com.learn.resource_service.entity.Resource;
 import com.learn.resource_service.repository.ResourceRepository;
 import com.learn.resource_service.kafka.ResourceProducer;
@@ -23,6 +24,8 @@ class ResourceServiceImplTest {
     private S3Service s3Service;
     @Mock
     private ResourceProducer resourceProducer;
+    @Mock
+    private SongServiceClient songServiceClient;
 
     @InjectMocks
     private ResourceServiceImpl resourceService;
@@ -46,7 +49,7 @@ class ResourceServiceImplTest {
         Long id = resourceService.uploadResource(mp3Data);
 
         assertNotNull(id);
-        verify(resourceProducer).sendId("1");
+        verify(resourceProducer).sendId(1L);
     }
 
     @Test
@@ -82,7 +85,7 @@ class ResourceServiceImplTest {
         when(resourceRepository.findById(1L)).thenReturn(Optional.of(resource));
 
         when(s3Service.fileExists("file.mp3")).thenReturn(false, false);
-
+        doNothing().when(songServiceClient).deleteSongById(1L);
         List<Long> deleted = resourceService.deleteResourcesByIds("1");
 
         assertEquals(List.of(1L), deleted);

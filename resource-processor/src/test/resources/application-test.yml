@@ -8,7 +8,7 @@ spring:
       group-id: test-resource-processor-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.LongDeserializer
       properties:
         session.timeout.ms: 10000
         heartbeat.interval.ms: 3000

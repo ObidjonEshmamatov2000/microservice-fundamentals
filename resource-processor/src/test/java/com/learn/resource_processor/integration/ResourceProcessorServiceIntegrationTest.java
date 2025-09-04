@@ -34,7 +34,7 @@ class ResourceProcessorServiceIntegrationTest {
 
     @Test
     void shouldProcessResourceAndSaveSongMetadata() {
-        String resourceId = "123";
+        Long resourceId = 123L;
         when(resourceServiceClient.getResourceData(resourceId)).thenReturn(validMp3Data);
 
         resourceProcessorService.process(resourceId);

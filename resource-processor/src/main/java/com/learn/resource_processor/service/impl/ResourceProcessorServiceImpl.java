@@ -23,10 +23,9 @@ public class ResourceProcessorServiceImpl implements ResourceProcessorService {
     }
 
     @Override
-    public void process(String resourceId) {
+    public void process(Long resourceId) {
         byte[] resourceData = resourceServiceClient.getResourceData(resourceId);
-        Long resourceLongId = Long.parseLong(resourceId);
-        SongDTO songDTO = processMp3Resource(resourceData, resourceLongId);
+        SongDTO songDTO = processMp3Resource(resourceData, resourceId);
         songServiceClient.saveSongMetadata(songDTO);
         System.out.println("Processed resource ID: " + resourceId);
     }

@@ -38,7 +38,9 @@ import static org.mockito.Mockito.*;
 @Testcontainers
 @TestPropertySource(properties = {
         "spring.kafka.bootstrap-servers=localhost:9092", // Will be mocked anyway
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.kafka.consumer.value-deserializer=org.apache.kafka.common.serialization.LongDeserializer",
+        "spring.kafka.producer.value-serializer=org.apache.kafka.common.serialization.LongSerializer"
 })
 @DirtiesContext
 class ResourceServiceIntegrationTest {
@@ -92,7 +94,7 @@ class ResourceServiceIntegrationTest {
                 .thenReturn("https://test-bucket.s3.amazonaws.com/test-file.mp3");
         when(s3Service.fileExists(anyString())).thenReturn(true);
         when(s3Service.downloadFile(anyString())).thenReturn(validMp3Data);
-        doNothing().when(resourceProducer).sendId(anyString());
+        doNothing().when(resourceProducer).sendId(anyLong());
     }
 
     @AfterEach
@@ -127,7 +129,7 @@ class ResourceServiceIntegrationTest {
         verify(s3Service, times(1)).fileExists(anyString());
 
         // Verify Kafka producer call
-        verify(resourceProducer, times(1)).sendId(resourceId.toString());
+        verify(resourceProducer, times(1)).sendId(resourceId);
     }
 
     @Test
@@ -175,7 +177,7 @@ class ResourceServiceIntegrationTest {
     void shouldRollbackOnKafkaFailureAndCleanup() {
         // Given
         doThrow(new RuntimeException("Kafka send failed"))
-                .when(resourceProducer).sendId(anyString());
+                .when(resourceProducer).sendId(anyLong());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("audio/mpeg"));
